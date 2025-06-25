@@ -68,7 +68,7 @@ if not session.logged_in:
                 session.logged_in = True
                 session.user = email
                 st.success(f"{email}님 환영합니다!")
-                st.experimental_rerun()
+                st.rerun()
             else:
                 st.error("로그인 실패")
 
@@ -84,7 +84,7 @@ else:
     if st.sidebar.button("로그아웃"):
         session.logged_in = False
         session.user = None
-        st.experimental_rerun()
+        st.rerun()
 
     st.header("용돈 기록 입력")
     date = st.date_input("날짜")
