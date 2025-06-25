@@ -74,7 +74,7 @@ if not st.session_state.logged_in:
                 st.session_state.user = email
                 st.session_state.ledger = load_expenses(email)
                 st.success(f"{email}님 환영합니다!")
-                st.experimental_rerun()
+                st.rerun()
             else:
                 st.error("로그인 실패")
     else:
@@ -90,7 +90,7 @@ else:
         st.session_state.logged_in = False
         st.session_state.user = None
         st.session_state.ledger = pd.DataFrame(columns=["날짜", "분류", "내용", "금액", "수입/지출"])
-        st.experimental_rerun()
+        st.rerun()
 
     st.title("💸 용돈기입장")
 
