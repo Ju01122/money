@@ -1,12 +1,11 @@
 import streamlit as st
+import pandas as pd
 import bcrypt
 import json
 import os
-import pandas as pd
 from datetime import datetime
 
-st.set_page_config(page_title="용돈기입장", page_icon="💸", layout="centered")
-
+# 사용자 DB 및 데이터 폴더 설정
 USER_DB = "users.json"
 DATA_DIR = "user_data"
 os.makedirs(DATA_DIR, exist_ok=True)
@@ -44,13 +43,14 @@ def login(email, password):
 def load_expenses(email):
     filepath = os.path.join(DATA_DIR, f"{email}.json")
     if os.path.exists(filepath):
-        with open(filepath, "r") as f:
-            return pd.read_json(f)
+        return pd.read_json(filepath)
     return pd.DataFrame(columns=["날짜", "분류", "내용", "금액", "수입/지출"])
 
 def save_expenses(email, df):
     filepath = os.path.join(DATA_DIR, f"{email}.json")
-    df.to_json(filepath, orient="records", force_ascii=False)
+    df.to_json(filepath, force_ascii=False)
+
+st.set_page_config(page_title="용돈기입장", page_icon="💸", layout="centered")
 
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
@@ -58,119 +58,135 @@ if "logged_in" not in st.session_state:
     st.session_state.ledger = pd.DataFrame(columns=["날짜", "분류", "내용", "금액", "수입/지출"])
     st.session_state.edit_index = None
 
-if not st.session_state.logged_in:
-    st.title("용돈 기입장")
-    menu = st.sidebar.selectbox("메뉴 선택", ["로그인", "회원가입"])
-    email = st.text_input("이메일")
-    password = st.text_input("비밀번호", type="password")
+menu = st.sidebar.selectbox("메뉴 선택", ["로그인", "회원가입"] if not st.session_state.logged_in else ["용돈기입장", "로그아웃"])
 
-    if menu == "로그인":
-        if st.button("로그인"):
-            if login(email, password):
-                st.session_state.logged_in = True
-                st.session_state.user = email
-                st.session_state.ledger = load_expenses(email)
-                st.success(f"{email}님 환영합니다!")
-                st.rerun()
-            else:
-                st.error("로그인 실패")
-    else:
-        if st.button("회원가입"):
-            if signup(email, password):
-                st.success("회원가입 성공! 로그인 해주세요.")
-            else:
-                st.warning("이미 존재하는 이메일입니다.")
+if not st.session_state.logged_in:
+    if menu in ["로그인", "회원가입"]:
+        email = st.text_input("이메일")
+        password = st.text_input("비밀번호", type="password")
+
+        if menu == "로그인":
+            if st.button("로그인"):
+                if login(email, password):
+                    st.session_state.logged_in = True
+                    st.session_state.user = email
+                    st.session_state.ledger = load_expenses(email)
+                    st.success(f"{email}님 환영합니다!")
+                    st.rerun()
+                else:
+                    st.error("로그인 실패")
+
+        elif menu == "회원가입":
+            if st.button("회원가입"):
+                if signup(email, password):
+                    st.success("회원가입 성공! 로그인 해주세요.")
+                else:
+                    st.warning("이미 존재하는 이메일입니다.")
 else:
-    st.sidebar.success(f"{st.session_state.user}님 로그인 중")
-    if st.sidebar.button("로그아웃"):
-        save_expenses(st.session_state.user, st.session_state.ledger)
+    if menu == "로그아웃":
         st.session_state.logged_in = False
         st.session_state.user = None
         st.session_state.ledger = pd.DataFrame(columns=["날짜", "분류", "내용", "금액", "수입/지출"])
         st.rerun()
 
-    st.title("💸 용돈기입장")
+    if menu == "용돈기입장":
+        st.title("💸 용돈기입장")
+        tab1, tab2, tab3 = st.tabs(["➕ 입력하기", "📋 전체 내역", "📊 통계 보기"])
 
-    tab1, tab2, tab3 = st.tabs(["➕ 입력하기", "📋 전체 내역", "📊 통계 보기"])
+        with tab1:
+            st.subheader("➕ 새 내역 입력")
+            with st.form("entry_form"):
+                col1, col2 = st.columns(2)
+                with col1:
+                    date = st.date_input("날짜", value=datetime.today())
+                    category = st.selectbox("분류", ["식비", "교통", "문화", "쇼핑", "기타"])
+                with col2:
+                    amount = st.number_input("금액", min_value=0, step=100)
+                    type_ = st.radio("수입/지출", ["수입", "지출"], horizontal=True)
+                description = st.text_input("내용", placeholder="예: 편의점 간식")
 
-    with tab1:
-        st.subheader("➕ 새 내역 입력")
-        with st.form("entry_form"):
-            col1, col2 = st.columns(2)
-            with col1:
-                date = st.date_input("날짜", value=datetime.today())
-                category = st.selectbox("분류", ["식비", "교통", "문화", "쇼핑", "기타"])
-            with col2:
-                amount = st.number_input("금액", min_value=0, step=100)
-                type_ = st.radio("수입/지출", ["수입", "지출"], horizontal=True)
-            description = st.text_input("내용", placeholder="예: 편의점 간식")
-
-            submitted = st.form_submit_button("저장")
-            if submitted:
-                new_data = {
-                    "날짜": pd.to_datetime(date).strftime("%Y-%m-%d"),
-                    "분류": category,
-                    "내용": description,
-                    "금액": amount,
-                    "수입/지출": type_
-                }
-                if st.session_state.edit_index is not None:
-                    st.session_state.ledger.iloc[st.session_state.edit_index] = new_data
-                    st.session_state.edit_index = None
-                    st.success("수정되었습니다!")
-                else:
+                submitted = st.form_submit_button("저장")
+                if submitted:
+                    new_data = {
+                        "날짜": pd.to_datetime(date).strftime("%Y-%m-%d"),
+                        "분류": category,
+                        "내용": description,
+                        "금액": amount,
+                        "수입/지출": type_
+                    }
                     st.session_state.ledger = pd.concat(
                         [st.session_state.ledger, pd.DataFrame([new_data])],
                         ignore_index=True
                     )
+                    save_expenses(st.session_state.user, st.session_state.ledger)
                     st.success("저장되었습니다!")
 
-    with tab2:
-        st.subheader("📋 전체 내역 보기")
-        if st.session_state.ledger.empty:
-            st.info("아직 입력된 내역이 없습니다.")
-        else:
-            df = st.session_state.ledger.copy().sort_values("날짜", ascending=False).reset_index(drop=True)
-            for i, row in df.iterrows():
-                cols = st.columns([2, 1, 2, 1, 1, 1, 1])
-                cols[0].write(row["날짜"])
-                cols[1].write(row["분류"])
-                cols[2].write(row["내용"])
-                cols[3].write(f"{row['금액']:,} 원")
-                cols[4].write(row["수입/지출"])
-                if cols[5].button("✏️ 수정", key=f"edit_{i}"):
-                    st.session_state.edit_index = i
-                    st.rerun()
-                if cols[6].button("🗑️ 삭제", key=f"delete_{i}"):
-                    st.session_state.ledger.drop(i, inplace=True)
-                    st.session_state.ledger.reset_index(drop=True, inplace=True)
-                    st.success("삭제되었습니다!")
-                    st.rerun()
+        with tab2:
+            st.subheader("📋 전체 내역 보기")
+            if st.session_state.ledger.empty:
+                st.info("아직 입력된 내역이 없습니다.")
+            else:
+                df = st.session_state.ledger.copy().sort_values("날짜", ascending=False)
+                for i, row in df.iterrows():
+                    cols = st.columns([2, 2, 3, 2, 2, 1, 1])
+                    cols[0].write(row["날짜"])
+                    cols[1].write(row["분류"])
+                    cols[2].write(row["내용"])
+                    cols[3].write(f"{row['금액']:,}원")
+                    cols[4].write(row["수입/지출"])
+                    if cols[5].button("✏️ 수정", key=f"edit_{i}"):
+                        st.session_state.edit_index = i
+                        st.rerun()
+                    if cols[6].button("🗑 삭제", key=f"del_{i}"):
+                        st.session_state.ledger.drop(index=i, inplace=True)
+                        st.session_state.ledger.reset_index(drop=True, inplace=True)
+                        save_expenses(st.session_state.user, st.session_state.ledger)
+                        st.rerun()
 
-    with tab3:
-        st.subheader("📊 통계 보기")
-        df = st.session_state.ledger
-        if df.empty:
-            st.info("데이터가 없어요. 먼저 입력해 주세요!")
-        else:
-            col1, col2 = st.columns(2)
-            income = df[df["수입/지출"] == "수입"]["금액"].sum()
-            expense = df[df["수입/지출"] == "지출"]["금액"].sum()
-            balance = income - expense
+                if st.session_state.edit_index is not None:
+                    st.info("선택한 항목 수정하기")
+                    edit_row = st.session_state.ledger.loc[st.session_state.edit_index]
+                    date = st.date_input("날짜", value=pd.to_datetime(edit_row["날짜"]))
+                    category = st.selectbox("분류", ["식비", "교통", "문화", "쇼핑", "기타"], index=["식비", "교통", "문화", "쇼핑", "기타"].index(edit_row["분류"]))
+                    amount = st.number_input("금액", min_value=0, step=100, value=int(edit_row["금액"]))
+                    type_ = st.radio("수입/지출", ["수입", "지출"], index=0 if edit_row["수입/지출"] == "수입" else 1)
+                    description = st.text_input("내용", value=edit_row["내용"])
 
-            with col1:
-                st.metric("총 수입", f"{income:,.0f} 원")
-                st.metric("총 지출", f"{expense:,.0f} 원")
-            with col2:
-                st.metric("잔액", f"{balance:,.0f} 원")
+                    if st.button("저장"):
+                        st.session_state.ledger.loc[st.session_state.edit_index] = {
+                            "날짜": pd.to_datetime(date).strftime("%Y-%m-%d"),
+                            "분류": category,
+                            "내용": description,
+                            "금액": amount,
+                            "수입/지출": type_
+                        }
+                        save_expenses(st.session_state.user, st.session_state.ledger)
+                        st.session_state.edit_index = None
+                        st.success("수정되었습니다!")
+                        st.rerun()
 
-            st.divider()
+        with tab3:
+            st.subheader("📊 통계 보기")
+            df = st.session_state.ledger
+            if df.empty:
+                st.info("데이터가 없어요. 먼저 입력해 주세요!")
+            else:
+                col1, col2 = st.columns(2)
+                income = df[df["수입/지출"] == "수입"]["금액"].sum()
+                expense = df[df["수입/지출"] == "지출"]["금액"].sum()
+                balance = income - expense
 
-            exp_by_cat = (
-                df[df["수입/지출"] == "지출"]
-                .groupby("분류")["금액"]
-                .sum()
-                .sort_values(ascending=False)
-            )
+                with col1:
+                    st.metric("총 수입", f"{income:,.0f} 원")
+                    st.metric("총 지출", f"{expense:,.0f} 원")
+                with col2:
+                    st.metric("잔액", f"{balance:,.0f} 원")
 
-            st.bar_chart(exp_by_cat)
+                st.divider()
+                exp_by_cat = (
+                    df[df["수입/지출"] == "지출"]
+                    .groupby("분류")["금액"]
+                    .sum()
+                    .sort_values(ascending=False)
+                )
+                st.bar_chart(exp_by_cat)
