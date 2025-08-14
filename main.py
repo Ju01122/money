@@ -134,9 +134,13 @@ else:
             col1, col2 = st.columns(2)
             with col1:
                 date = st.date_input("날짜", value=default_date)
-                category = st.selectbox(
-                    "분류", ["식비", "교통", "문화", "쇼핑", "기타"],
-                    index=["식비","교통","문화","쇼핑","기타"].index(default_category)
+                categories = ["식비", "교통", "문화", "쇼핑", "기타", "직접 입력"]
+                selected_category = st.selectbox("분류", categories, index=categories.index(default_category) if default_category in categories else len(categories) - 1)
+
+if selected_category == "직접 입력":
+    category = st.text_input("새로운 분류 입력", value=default_category if default_category not in categories else "")
+else:
+    category = selected_category
                 )
             with col2:
                 amount = st.number_input("금액", min_value=0, step=100, value=default_amount)
