@@ -127,7 +127,9 @@ else:
             col1, col2 = st.columns(2)
             with col1:
                 date = st.date_input("날짜", value=datetime.today())
-                category_input = st.text_input("분류 입력", placeholder="예: 식비, 교통...")
+                categories = ["식비", "교통", "용돈", "기타"]
+                category_input = st.selectbox("분류", categories)
+
             with col2:
                 amount = st.number_input("금액", min_value=0, step=100)
                 type_ = st.radio("수입/지출", ["수입", "지출"], horizontal=True)
