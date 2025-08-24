@@ -166,7 +166,7 @@ else:
         else:
             for i, row in df.iterrows():
                 cols = st.columns(6)
-                cols[0].write(row["날짜"])
+                cols[0].write(pd.to_datetime(row["날짜"]).strftime("%Y-%m-%d"))
                 cols[1].write(row["분류"])
                 cols[2].write(row["내용"])
                 amount_sign = "+" if row["수입/지출"] == "수입" else "-"
