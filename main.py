@@ -158,6 +158,8 @@ else:
     with tab2:
         st.subheader("📋 전체 내역 보기")
         df = st.session_state.ledger.copy()
+        df["날짜"] = pd.to_datetime(df["날짜"])  # 날짜 형식으로 변환
+        df = df.sort_values(by="날짜", ascending=False).reset_index(drop=True)  # 최신순 정렬
 
         if df.empty:
             st.info("아직 입력된 내역이 없습니다.")
