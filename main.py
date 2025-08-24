@@ -83,7 +83,7 @@ if "ledger" not in st.session_state:
 # ------------------------
 if not st.session_state.logged_in:
     menu = st.sidebar.selectbox("메뉴 선택", ["로그인", "회원가입"])
-    email = st.text_input("이메일")
+    email = st.text_input("아이디")
     password = st.text_input("비밀번호", type="password")
 
     if menu == "로그인":
@@ -102,7 +102,7 @@ if not st.session_state.logged_in:
             if signup(email, password):
                 st.success("회원가입 성공! 로그인 해주세요.")
             else:
-                st.warning("이미 존재하는 이메일입니다.")
+                st.warning("이미 존재하는 아이디입니다.")
 
 # ------------------------
 # 메인 기능
@@ -165,8 +165,9 @@ else:
                 cols[0].write(row["날짜"])
                 cols[1].write(row["분류"])
                 cols[2].write(row["내용"])
-                cols[3].write(f"{row['금액']:,}원")
-
+                amount_sign = "+" if row["수입/지출"] == "수입" else "-"
+                formatted_amount = f"{amount_sign}{row['금액']:,}원"
+                cols[3].write(formatted_amount)
                 # 수정 버튼
                 if cols[4].button("✏️ 수정", key=f"edit_{i}"):
                     st.session_state.edit_index = i
