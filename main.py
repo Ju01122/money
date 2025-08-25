@@ -155,7 +155,7 @@ else:
     # ------------------------
     # 전체 내역 (수정 / 삭제 가능)
     # ------------------------
-    with tab2:
+   with tab2:
     st.subheader("📋 전체 내역 보기")
     df = st.session_state.ledger.copy()
 
@@ -214,7 +214,10 @@ else:
                         "수입/지출": new_type
                     }
                     st.session_state.ledger = df  # ✅ 원본 갱신
-
+                    save_expenses(st.session_state.user, df)
+                    st.session_state.edit_index = None
+                    st.success("수정되었습니다!")
+                    st.rerun()
 
     # ------------------------
     # 통계 보기
