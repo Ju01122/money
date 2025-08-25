@@ -155,10 +155,7 @@ else:
     # ------------------------
     # 전체 내역 (수정 / 삭제 가능)
     # ------------------------
-      # ------------------------
-    # 전체 내역 (수정 / 삭제 가능)
-    # ------------------------
-    with tab2:
+     with tab2:
         st.subheader("📋 전체 내역 보기")
         df = st.session_state.ledger.copy()
         if df.empty:
@@ -180,13 +177,13 @@ else:
 
                 if cols[4].button("✏️ 수정", key=f"edit_{i}"):
                     st.session_state.edit_index = i
-                    st.session_state.edit_df = df  # 🔐 수정 대상 df 저장
+                    st.session_state.edit_df = df
                     st.rerun()
 
                 if cols[5].button("🗑 삭제", key=f"delete_{i}"):
                     df.drop(i, inplace=True)
                     df.reset_index(drop=True, inplace=True)
-                    st.session_state.ledger = df  # ✅ 업데이트
+                    st.session_state.ledger = df
                     save_expenses(st.session_state.user, df)
                     st.success("삭제되었습니다!")
                     st.rerun()
@@ -200,10 +197,13 @@ else:
                     with col1:
                         new_date = st.date_input("날짜", value=pd.to_datetime(edit_row["날짜"]))
                         categories = ["식비", "교통", "용돈", "기타"]
-                        new_category = st.selectbox("분류", categories, index=categories.index(edit_row["분류"]) if edit_row["분류"] in categories else 0)
+                        new_category = st.selectbox("분류", categories,
+                                                    index=categories.index(edit_row["분류"])
+                                                    if edit_row["분류"] in categories else 0)
                     with col2:
                         new_amount = st.number_input("금액", min_value=0, step=100, value=int(edit_row["금액"]))
-                        new_type = st.radio("수입/지출", ["수입", "지출"], index=0 if edit_row["수입/지출"] == "수입" else 1)
+                        new_type = st.radio("수입/지출", ["수입", "지출"],
+                                            index=0 if edit_row["수입/지출"] == "수입" else 1)
 
                     new_description = st.text_input("내용", value=edit_row["내용"])
 
@@ -215,7 +215,7 @@ else:
                             "금액": new_amount,
                             "수입/지출": new_type
                         }
-                        st.session_state.ledger = df  # ✅ 원본 갱신
+                        st.session_state.ledger = df
                         save_expenses(st.session_state.user, df)
                         st.session_state.edit_index = None
                         st.success("수정되었습니다!")
