@@ -155,68 +155,71 @@ else:
     # ------------------------
     # 전체 내역 (수정 / 삭제 가능)
     # ------------------------
-   with tab2:
-       st.subheader("📋 전체 내역 보기")
-       df = st.session_state.ledger.copy()
-       if df.empty:
-           st.info("아직 입력된 내역이 없습니다.")
-       else:
-           df["날짜"] = pd.to_datetime(df["날짜"])
-           df = df.sort_values(by="날짜", ascending=False).reset_index(drop=True)
+      # ------------------------
+    # 전체 내역 (수정 / 삭제 가능)
+    # ------------------------
+    with tab2:
+        st.subheader("📋 전체 내역 보기")
+        df = st.session_state.ledger.copy()
+        if df.empty:
+            st.info("아직 입력된 내역이 없습니다.")
+        else:
+            df["날짜"] = pd.to_datetime(df["날짜"])
+            df = df.sort_values(by="날짜", ascending=False).reset_index(drop=True)
 
-        for i, row in df.iterrows():
-            cols = st.columns(6)
-            cols[0].write(row["날짜"].strftime("%Y-%m-%d"))
-            cols[1].write(row["분류"])
-            cols[2].write(row["내용"])
+            for i, row in df.iterrows():
+                cols = st.columns(6)
+                cols[0].write(row["날짜"].strftime("%Y-%m-%d"))
+                cols[1].write(row["분류"])
+                cols[2].write(row["내용"])
 
-            amount_sign = "+" if row["수입/지출"] == "수입" else "-"
-            color = "green" if amount_sign == "+" else "red"
-            formatted_amount = f"{amount_sign}{row['금액']:,}원"
-            cols[3].markdown(f"<span style='color:{color}'>{formatted_amount}</span>", unsafe_allow_html=True)
+                amount_sign = "+" if row["수입/지출"] == "수입" else "-"
+                color = "green" if amount_sign == "+" else "red"
+                formatted_amount = f"{amount_sign}{row['금액']:,}원"
+                cols[3].markdown(f"<span style='color:{color}'>{formatted_amount}</span>", unsafe_allow_html=True)
 
-            if cols[4].button("✏️ 수정", key=f"edit_{i}"):
-                st.session_state.edit_index = i
-                st.session_state.edit_df = df  # 🔐 수정 대상 df 저장
-                st.rerun()
-
-            if cols[5].button("🗑 삭제", key=f"delete_{i}"):
-                df.drop(i, inplace=True)
-                df.reset_index(drop=True, inplace=True)
-                st.session_state.ledger = df  # ✅ 업데이트
-                save_expenses(st.session_state.user, df)
-                st.success("삭제되었습니다!")
-                st.rerun()
-
-        # ✏️ 수정 폼
-        if st.session_state.edit_index is not None:
-            edit_row = df.loc[st.session_state.edit_index]
-            st.subheader("✏️ 내역 수정")
-            with st.form("edit_form"):
-                col1, col2 = st.columns(2)
-                with col1:
-                    new_date = st.date_input("날짜", value=pd.to_datetime(edit_row["날짜"]))
-                    categories = ["식비", "교통", "용돈", "기타"]
-                    new_category = st.selectbox("분류", categories, index=categories.index(edit_row["분류"]) if edit_row["분류"] in categories else 0)
-                with col2:
-                    new_amount = st.number_input("금액", min_value=0, step=100, value=int(edit_row["금액"]))
-                    new_type = st.radio("수입/지출", ["수입", "지출"], index=0 if edit_row["수입/지출"] == "수입" else 1)
-
-                new_description = st.text_input("내용", value=edit_row["내용"])
-
-                if st.form_submit_button("수정 저장"):
-                    df.loc[st.session_state.edit_index] = {
-                        "날짜": pd.to_datetime(new_date).strftime("%Y-%m-%d"),
-                        "분류": new_category,
-                        "내용": new_description,
-                        "금액": new_amount,
-                        "수입/지출": new_type
-                    }
-                    st.session_state.ledger = df  # ✅ 원본 갱신
-                    save_expenses(st.session_state.user, df)
-                    st.session_state.edit_index = None
-                    st.success("수정되었습니다!")
+                if cols[4].button("✏️ 수정", key=f"edit_{i}"):
+                    st.session_state.edit_index = i
+                    st.session_state.edit_df = df  # 🔐 수정 대상 df 저장
                     st.rerun()
+
+                if cols[5].button("🗑 삭제", key=f"delete_{i}"):
+                    df.drop(i, inplace=True)
+                    df.reset_index(drop=True, inplace=True)
+                    st.session_state.ledger = df  # ✅ 업데이트
+                    save_expenses(st.session_state.user, df)
+                    st.success("삭제되었습니다!")
+                    st.rerun()
+
+            # ✏️ 수정 폼
+            if st.session_state.edit_index is not None:
+                edit_row = df.loc[st.session_state.edit_index]
+                st.subheader("✏️ 내역 수정")
+                with st.form("edit_form"):
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        new_date = st.date_input("날짜", value=pd.to_datetime(edit_row["날짜"]))
+                        categories = ["식비", "교통", "용돈", "기타"]
+                        new_category = st.selectbox("분류", categories, index=categories.index(edit_row["분류"]) if edit_row["분류"] in categories else 0)
+                    with col2:
+                        new_amount = st.number_input("금액", min_value=0, step=100, value=int(edit_row["금액"]))
+                        new_type = st.radio("수입/지출", ["수입", "지출"], index=0 if edit_row["수입/지출"] == "수입" else 1)
+
+                    new_description = st.text_input("내용", value=edit_row["내용"])
+
+                    if st.form_submit_button("수정 저장"):
+                        df.loc[st.session_state.edit_index] = {
+                            "날짜": pd.to_datetime(new_date).strftime("%Y-%m-%d"),
+                            "분류": new_category,
+                            "내용": new_description,
+                            "금액": new_amount,
+                            "수입/지출": new_type
+                        }
+                        st.session_state.ledger = df  # ✅ 원본 갱신
+                        save_expenses(st.session_state.user, df)
+                        st.session_state.edit_index = None
+                        st.success("수정되었습니다!")
+                        st.rerun()
 
     # ------------------------
     # 통계 보기
