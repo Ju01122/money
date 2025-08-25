@@ -17,13 +17,13 @@ os.makedirs(DATA_DIR, exist_ok=True)
 # ------------------------
 def load_users():
     if os.path.exists(USER_DB):
-        with open(USER_DB, "r") as f:
+        with open(USER_DB, "r", encoding="utf-8") as f:
             return json.load(f)
     return {}
 
 def save_users(users):
-    with open(USER_DB, "w") as f:
-        json.dump(users, f)
+    with open(USER_DB, "w", encoding="utf-8") as f:
+        json.dump(users, f, ensure_ascii=False)
 
 def hash_password(password):
     return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
@@ -54,14 +54,20 @@ def get_user_file(email):
 def load_expenses(email):
     filepath = get_user_file(email)
     if os.path.exists(filepath):
-        with open(filepath, "r") as f:
-            return pd.DataFrame(json.load(f))
-    return pd.DataFrame(columns=["날짜", "분류", "내용", "금액", "수입/지출"])
+        try:
+            with open(filepath, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            return pd.DataFrame(data)
+        except json.JSONDecodeError:
+            # JSON이 비었거나 손상된 경우 빈 데이터프레임 반환
+            return pd.DataFrame(columns=["날짜", "분류", "내용", "금액", "수입/지출"])
+    else:
+        return pd.DataFrame(columns=["날짜", "분류", "내용", "금액", "수입/지출"])
 
 def save_expenses(email, df):
     filepath = get_user_file(email)
-    with open(filepath, "w") as f:
-        json.dump(df.to_dict(orient="records"), f)
+    with open(filepath, "w", encoding="utf-8") as f:
+        json.dump(df.to_dict(orient="records"), f, ensure_ascii=False)
 
 # ------------------------
 # 앱 설정
@@ -170,64 +176,64 @@ else:
                 cols[1].write(row["분류"])
                 cols[2].write(row["내용"])
 
-            amount_sign = "+" if row["수입/지출"] == "수입" else "-"
-            color = "green" if amount_sign == "+" else "red"
-            formatted_amount = f"{amount_sign}{row['금액']:,}원"
-            cols[3].markdown(f"<span style='color:{color}'>{formatted_amount}</span>", unsafe_allow_html=True)
+                amount_sign = "+" if row["수입/지출"] == "수입" else "-"
+                color = "green" if amount_sign == "+" else "red"
+                formatted_amount = f"{amount_sign}{row['금액']:,}원"
+                cols[3].markdown(f"<span style='color:{color}'>{formatted_amount}</span>", unsafe_allow_html=True)
 
-            if cols[4].button("✏️ 수정", key=f"edit_{i}"):
-                st.session_state.edit_index = i
-                st.session_state.edit_df = df
-                st.rerun()
+                if cols[4].button("✏️ 수정", key=f"edit_{i}"):
+                    st.session_state.edit_index = i
+                    st.session_state.edit_df = df
+                    st.rerun()
 
-            if cols[5].button("🗑 삭제", key=f"delete_{i}"):
-                df.drop(i, inplace=True)
-                df.reset_index(drop=True, inplace=True)
-                st.session_state.ledger = df
-                save_expenses(st.session_state.user, df)
-                st.success("삭제되었습니다!")
-                st.rerun()
-
-        # ✏️ 수정 폼
-        if st.session_state.edit_index is not None:
-            edit_row = df.loc[st.session_state.edit_index]
-            st.subheader("✏️ 내역 수정")
-
-            with st.form("edit_form"):
-                col1, col2 = st.columns(2)
-                with col1:
-                    new_date = st.date_input("날짜", value=pd.to_datetime(edit_row["날짜"]))
-                    categories = ["식비", "교통", "용돈", "기타"]
-                    new_category = st.selectbox(
-                        "분류",
-                        categories,
-                        index=categories.index(edit_row["분류"]) if edit_row["분류"] in categories else 0
-                    )
-                with col2:
-                    new_amount = st.number_input(
-                        "금액", min_value=0, step=100, value=int(edit_row["금액"])
-                    )
-                    new_type = st.radio(
-                        "수입/지출",
-                        ["수입", "지출"],
-                        index=0 if edit_row["수입/지출"] == "수입" else 1
-                    )
-
-                new_description = st.text_input("내용", value=edit_row["내용"])
-
-                if st.form_submit_button("수정 저장"):
-                    df.loc[st.session_state.edit_index] = {
-                        "날짜": pd.to_datetime(new_date).strftime("%Y-%m-%d"),
-                        "분류": new_category,
-                        "내용": new_description,
-                        "금액": new_amount,
-                        "수입/지출": new_type
-                    }
+                if cols[5].button("🗑 삭제", key=f"delete_{i}"):
+                    df.drop(i, inplace=True)
+                    df.reset_index(drop=True, inplace=True)
                     st.session_state.ledger = df
                     save_expenses(st.session_state.user, df)
-                    st.session_state.edit_index = None
-                    st.success("수정되었습니다!")
+                    st.success("삭제되었습니다!")
                     st.rerun()
+
+            # ✏️ 수정 폼
+            if st.session_state.edit_index is not None:
+                edit_row = df.loc[st.session_state.edit_index]
+                st.subheader("✏️ 내역 수정")
+
+                with st.form("edit_form"):
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        new_date = st.date_input("날짜", value=pd.to_datetime(edit_row["날짜"]))
+                        categories = ["식비", "교통", "용돈", "기타"]
+                        new_category = st.selectbox(
+                            "분류",
+                            categories,
+                            index=categories.index(edit_row["분류"]) if edit_row["분류"] in categories else 0
+                        )
+                    with col2:
+                        new_amount = st.number_input(
+                            "금액", min_value=0, step=100, value=int(edit_row["금액"])
+                        )
+                        new_type = st.radio(
+                            "수입/지출",
+                            ["수입", "지출"],
+                            index=0 if edit_row["수입/지출"] == "수입" else 1
+                        )
+
+                    new_description = st.text_input("내용", value=edit_row["내용"])
+
+                    if st.form_submit_button("수정 저장"):
+                        df.loc[st.session_state.edit_index] = {
+                            "날짜": pd.to_datetime(new_date).strftime("%Y-%m-%d"),
+                            "분류": new_category,
+                            "내용": new_description,
+                            "금액": new_amount,
+                            "수입/지출": new_type
+                        }
+                        st.session_state.ledger = df
+                        save_expenses(st.session_state.user, df)
+                        st.session_state.edit_index = None
+                        st.success("수정되었습니다!")
+                        st.rerun()
 
     # ------------------------
     # 통계 보기
@@ -241,21 +247,4 @@ else:
             col1, col2 = st.columns(2)
             income = df[df["수입/지출"] == "수입"]["금액"].sum()
             expense = df[df["수입/지출"] == "지출"]["금액"].sum()
-            balance = income - expense
-
-            with col1:
-                st.metric("총 수입", f"{income:,.0f} 원")
-                st.metric("총 지출", f"{expense:,.0f} 원")
-            with col2:
-                st.metric("잔액", f"{balance:,.0f} 원", delta=f"{income - expense:,.0f} 원")
-
-            st.divider()
-
-            # 카테고리별 지출 합계
-            exp_by_cat = (
-                df[df["수입/지출"] == "지출"]
-                .groupby("분류")["금액"]
-                .sum()
-                .sort_values(ascending=False)
-            )
-            st.bar_chart(exp_by_cat)
+            balance
