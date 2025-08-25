@@ -230,11 +230,13 @@ else:
                             "수입/지출": new_type
                         }
                         st.session_state.ledger = df
-                        save_expenses(st.session_state.user, df)
-                        st.session_state.edit_index = None
-                        st.success("수정되었습니다!")
-                        st.rerun()
-
+                        def save_expenses(email, df):
+                            filepath = get_user_file(email)
+                            df_copy = df.copy()
+                            if "날짜" in df_copy.columns:
+                                df_copy["날짜"] = df_copy["날짜"].astype(str)
+                                with open(filepath, "w", encoding="utf-8") as f:
+                                    json.dump(df_copy.to_dict(orient="records"), f, ensure_ascii=False)
     # ------------------------
     # 통계 보기
     # ------------------------
