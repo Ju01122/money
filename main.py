@@ -234,9 +234,10 @@ else:
                             filepath = get_user_file(email)
                             df_copy = df.copy()
                             if "날짜" in df_copy.columns:
-                                df_copy["날짜"] = df_copy["날짜"].astype(str)
+                                df_copy["날짜"] = df_copy["날짜"].apply(lambda x: x.strftime("%Y-%m-%d") if hasattr(x, "strftime") else str(x))
                                 with open(filepath, "w", encoding="utf-8") as f:
                                     json.dump(df_copy.to_dict(orient="records"), f, ensure_ascii=False)
+
     # ------------------------
     # 통계 보기
     # ------------------------
