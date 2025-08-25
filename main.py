@@ -238,6 +238,9 @@ else:
     # ------------------------
     # 통계 보기
     # ------------------------
+    # ------------------------
+    # 통계 보기
+    # ------------------------
     with tab3:
         st.subheader("📊 통계 보기")
         df = st.session_state.ledger
@@ -247,4 +250,24 @@ else:
             col1, col2 = st.columns(2)
             income = df[df["수입/지출"] == "수입"]["금액"].sum()
             expense = df[df["수입/지출"] == "지출"]["금액"].sum()
-            balance
+            balance = income - expense
+
+            with col1:
+                st.metric("총 수입", f"{income:,.0f} 원")
+                st.metric("총 지출", f"{expense:,.0f} 원")
+            with col2:
+                st.metric("잔액", f"{balance:,.0f} 원", delta=f"{balance:,.0f} 원")
+
+            st.divider()
+
+            # 카테고리별 지출 합계
+            exp_by_cat = (
+                df[df["수입/지출"] == "지출"]
+                .groupby("분류")["금액"]
+                .sum()
+                .sort_values(ascending=False)
+            )
+            if not exp_by_cat.empty:
+                st.bar_chart(exp_by_cat)
+            else:
+                st.info("지출 데이터가 없습니다.")
