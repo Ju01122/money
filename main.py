@@ -287,7 +287,7 @@ else:
             if not exp_by_cat.empty:
                 chart = (
                     alt.Chart(exp_by_cat)
-                    .mark_bar(size=10)  # 막대 굵기 10
+                    .mark_bar(size=5)  # 막대 굵기 10
                     .encode(
                         x="분류",
                         y="금액",
