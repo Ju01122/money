@@ -3,6 +3,7 @@ import bcrypt
 import json
 import os
 import pandas as pd
+import numpy as np
 from datetime import datetime
 
 # ------------------------
@@ -66,12 +67,29 @@ def load_expenses(email):
 def save_expenses(email, df):
     filepath = get_user_file(email)
     df_copy = df.copy()
+
+    # 날짜를 문자열로 변환
     if "날짜" in df_copy.columns:
-        df_copy["날짜"] = df_copy["날짜"].apply(
-            lambda x: x.strftime("%Y-%m-%d") if hasattr(x, "strftime") else str(x)
-        )
+        df_copy["날짜"] = df_copy["날짜"].astype(str)
+
+    # numpy 타입 -> Python 기본 타입 변환
+    records = df_copy.to_dict(orient="records")
+    clean_records = []
+    for row in records:
+        clean_row = {}
+        for k, v in row.items():
+            if isinstance(v, (pd.Timestamp,)):
+                clean_row[k] = v.strftime("%Y-%m-%d")
+            elif isinstance(v, (np.integer, np.int64)):
+                clean_row[k] = int(v)
+            elif isinstance(v, (np.floating, np.float64)):
+                clean_row[k] = float(v)
+            else:
+                clean_row[k] = v
+        clean_records.append(clean_row)
+
     with open(filepath, "w", encoding="utf-8") as f:
-        json.dump(df_copy.to_dict(orient="records"), f, ensure_ascii=False)
+        json.dump(clean_records, f, ensure_ascii=False, indent=2)
 
 # ------------------------
 # 앱 설정
@@ -152,7 +170,7 @@ else:
                     "날짜": pd.to_datetime(date).strftime("%Y-%m-%d"),
                     "분류": category_input,
                     "내용": description,
-                    "금액": amount,
+                    "금액": int(amount),
                     "수입/지출": type_
                 }
                 st.session_state.ledger = pd.concat(
@@ -182,7 +200,7 @@ else:
 
                 amount_sign = "+" if row["수입/지출"] == "수입" else "-"
                 color = "green" if amount_sign == "+" else "red"
-                formatted_amount = f"{amount_sign}{row['금액']:,}원"
+                formatted_amount = f"{amount_sign}{int(row['금액']):,}원"
                 cols[3].markdown(f"<span style='color:{color}'>{formatted_amount}</span>", unsafe_allow_html=True)
 
                 if cols[4].button("✏️ 수정", key=f"edit_{i}"):
@@ -230,7 +248,7 @@ else:
                             "날짜": pd.to_datetime(new_date).strftime("%Y-%m-%d"),
                             "분류": new_category,
                             "내용": new_description,
-                            "금액": new_amount,
+                            "금액": int(new_amount),
                             "수입/지출": new_type
                         }
                         st.session_state.ledger = df
