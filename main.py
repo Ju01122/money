@@ -59,15 +59,19 @@ def load_expenses(email):
                 data = json.load(f)
             return pd.DataFrame(data)
         except json.JSONDecodeError:
-            # JSON이 비었거나 손상된 경우 빈 데이터프레임 반환
             return pd.DataFrame(columns=["날짜", "분류", "내용", "금액", "수입/지출"])
     else:
         return pd.DataFrame(columns=["날짜", "분류", "내용", "금액", "수입/지출"])
 
 def save_expenses(email, df):
     filepath = get_user_file(email)
+    df_copy = df.copy()
+    if "날짜" in df_copy.columns:
+        df_copy["날짜"] = df_copy["날짜"].apply(
+            lambda x: x.strftime("%Y-%m-%d") if hasattr(x, "strftime") else str(x)
+        )
     with open(filepath, "w", encoding="utf-8") as f:
-        json.dump(df.to_dict(orient="records"), f, ensure_ascii=False)
+        json.dump(df_copy.to_dict(orient="records"), f, ensure_ascii=False)
 
 # ------------------------
 # 앱 설정
@@ -230,17 +234,11 @@ else:
                             "수입/지출": new_type
                         }
                         st.session_state.ledger = df
-                        def save_expenses(email, df):
-                            filepath = get_user_file(email)
-                            df_copy = df.copy()
-                            if "날짜" in df_copy.columns:
-                                df_copy["날짜"] = df_copy["날짜"].apply(lambda x: x.strftime("%Y-%m-%d") if hasattr(x, "strftime") else str(x))
-                                with open(filepath, "w", encoding="utf-8") as f:
-                                    json.dump(df_copy.to_dict(orient="records"), f, ensure_ascii=False)
+                        save_expenses(st.session_state.user, df)
+                        st.success("수정되었습니다!")
+                        st.session_state.edit_index = None
+                        st.rerun()
 
-    # ------------------------
-    # 통계 보기
-    # ------------------------
     # ------------------------
     # 통계 보기
     # ------------------------
@@ -263,7 +261,6 @@ else:
 
             st.divider()
 
-            # 카테고리별 지출 합계
             exp_by_cat = (
                 df[df["수입/지출"] == "지출"]
                 .groupby("분류")["금액"]
